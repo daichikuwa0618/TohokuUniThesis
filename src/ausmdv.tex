@@ -1,0 +1,173 @@
+実際の計算においては一般曲線座標における数値流束が必要となる．
+いま，セルのある面を考える．
+単位面ベクトルを$\bm{n}$で表し，この面ベクトルに対して垂直となる2つのベクトル
+$\bm{l},\ \bm{m}$を考える．
+ただし，それぞれは以下のように関係付けられる．
+\begin{align}
+    \bm{n}\cdot\bm{l} = \bm{n}\cdot\bm{m} = \bm{l}\cdot\bm{m} = 0, \\
+    \bm{n}\cdot\bm{n} = \bm{m}\cdot\bm{m} = \bm{l}\cdot\bm{l} = 1.
+\end{align}
+これらのベクトルを用いるとセル表面に対して垂直方向，接線方向の速度成分が求まり，以下のようになる．
+\begin{equation}
+    U = un_j,\ \ V = vl_j,\ \ W = wm_j.
+\end{equation}
+FVS系のスキームは，セル表面で数値流束を求める際に必ずしも一般曲線座標に変換された数値流束に対してスキームを適用しなくてもよく，
+直交座標系で表現された数値流束と同形の数値流束に対してスキームを適用し，
+その後，一般曲線座標系の数値流束に変換することができる．
+
+まず，$\xi$方向のセル表面での数値流束を考える．
+簡単にするため，ここでは単位面積当たりの数値流束を考える．
+\begin{equation}
+    \hat{\bm{F}_1} = n_j\bm{F}_1 =
+    \begin{pmatrix}
+        \rho U \\
+        \rho u U + n_1p \\
+        \rho v U + n_2p \\
+        \rho w U + n_3p \\
+        (E + p)U \\
+        \rho\gamma_s U \\
+        E_vU
+    \end{pmatrix}.
+\end{equation}
+いま，次のような変換マトリックス$\bm{T}$を考え，$\hat{\bm{F}_1}$に左からかけると，
+\begin{equation}
+    \bm{T}\hat{\bm{F}_1} =
+    \begin{pmatrix}
+        1 & 0 & 0 & 0 & 0 & 0 & 0 \\
+        0 & n_1 & n_2 & n_3 & 0 & 0 & 0 \\
+        0 & l_1 & l_2 & l_3 & 0 & 0 & 0 \\
+        0 & m_1 & m_2 & m_3 & 0 & 0 & 0 \\
+        0 & 0 & 0 & 0 & 1 & 0 & 0 \\
+        0 & 0 & 0 & 0 & 0 & 1 & 0 \\
+        0 & 0 & 0 & 0 & 0 & 0 & 1
+    \end{pmatrix}
+    \begin{pmatrix}
+        \rho U \\
+        \rho u U + n_1p \\
+        \rho v U + n_2p \\
+        \rho w U + n_3p \\
+        (E + p)U \\
+        \rho\gamma_s U \\
+        E_vU
+    \end{pmatrix} =
+    \begin{pmatrix}
+        \rho U \\
+        \rho U^2 + p \\
+        \rho UV + p \\
+        \rho UW + p \\
+        (E + p)U \\
+        \rho \gamma_sU \\
+        E_v U
+    \end{pmatrix} = \bar{\bm{F}}_1,
+\end{equation}
+となる．FVS系のスキームでは単純に$\hat{\bm{F}}$を気流の特性方向に従って分離するので，
+\begin{equation}
+    \bar{\bm{F}}=\bar{\bm{F}}^{+}+\bar{\bm{F}}^{-}=\bm{T}\left(\hat{\bm{F}}^{+}+\hat{\bm{F}}^{-}\right)=\bm{T} \hat{\bm{F}}^{+}+\bm{T} \hat{\bm{F}}^{-}.
+\end{equation}
+となり，逆行列$\bm{T}^{-1} = \bm{T}^\top$を用いれば，
+\begin{equation}
+\hat{\bm{F}}^{+}=\bm{T}^{-1} \bar{\bm{F}}^{+}, \quad \hat{\bm{F}}^{-}=\bm{T}^{-1} \bm{F}^{-},
+\end{equation}
+となる．ここで，逆行列$\bm{T}^{-1}$は以下の通りである．
+\begin{equation}
+\bm{T}^{-1}=\begin{pmatrix}
+1 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & n_{1} & l_{1} & m_{1} & 0 & 0 & 0 \\
+0 & n_{2} & l_{2} & m_{2} & 0 & 0 & 0 \\
+0 & n_{3} & l_{3} & m_{3} & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 1 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 1
+\end{pmatrix}.
+\end{equation}
+すなわち，数値流束としては$\bar{\bm{F}}$に対してスキームを構築すればよいことが分かる．
+この数値流束$\bar{\bm{F}}$は直交座標系での数値流束とほぼ同じ形をしており，
+異なる点としては速度が通常$x,\ y,\ z$成分で表されるところがセル表面に垂直及び接線方向の速度成分で表されている点である．
+このようにして作られた数値流束に，
+以下のように$\bm{T}^{-1}$をかけることで最終的なセル表面での数値流束が求まり,次式のようになる．
+\begin{equation}
+\label{eq:num-flux}
+\hat{\bm{F}}=\begin{pmatrix}
+\bar{F}_{1} \\
+x_{1} \bar{F}_{2}+l_{1} \bar{F}_{3}+m_{1} \bar{F}_{4} \\
+x_{2} \bar{F}_{2}+l_{2} \bar{F}_{3}+m_{2} \bar{F}_{4} \\
+x_{3} \bar{F}_{2}+l_{3} \bar{F}_{3}+m_{3} \bar{F}_{4} \\
+\bar{F}_{5} \\
+F_{5+s}^{-} \\
+F_{5+s+1}
+\end{pmatrix}.
+\end{equation}
+
+また，和田は従来から人工粘性が過剰であり，
+境界層内流れの捕獲に問題があると指摘されていたFVS系のスキームを改良し，
+特に接触不連続面での人工粘性を小さくすることで境界層内流れの解像度を向上させた
+AUSM–DVスキーム~\cite{ausmdv}を提案した．
+このAUSM–DVスキームはFVS系のスキームの特徴である頑丈さを持っているので，
+特に安定性が要求される非平衡反応流の解析には適したスキームである．
+よって，本研究における数値流束の評価にはAUSM–DVスキームを用いる．
+
+AUSM–DVスキームでの数値流束は以下のように表される．
+\begin{equation}
+\label{eq:ausmdv}
+\overline{\boldsymbol{F}}_\mathrm{AUSMDV}=\begin{pmatrix}
+f_{1} \\
+f_{2} \\
+f_{3} \\
+f_{4} \\
+f_{5} \\
+f_{5+s} \\
+f_{5+s+1}
+\end{pmatrix}=\begin{pmatrix}
+U_{L}^{+} \rho_{L}+U_{R}^{-} \rho_{R} \vspace{5pt} \\
+s f_{2}^\mathrm{AUSMV}+(1-s) f_{2}^\mathrm{AUSMD}+p_{L}^{+}+p_{R}^{-} \vspace{5pt} \\
+\frac{f_{1}+\left|f_{1}\right|}{V_{L}}+\frac{f_{1}-\left|f_{1}\right|}{2} V_{R} \vspace{5pt} \\
+\frac{f_{1}+\left\lceil f_{1} |\right.}{2} W_{L}+\frac{f_{1}-\left|f_{1}\right|}{2} W_{R} \vspace{5pt} \\
+\frac{f_{1}+\left|f_{1}\right|}{2} H_{L}+\frac{f_{1}-\left|f_{1}\right|}{2} H_{R} \vspace{5pt} \\
+\frac{f_{1}+\left|f_{1}\right|}{2} \gamma_{s L}+\frac{f_{1}-\left|f_{1}\right|}{2} \gamma_{s R} \vspace{5pt} \\
+\frac{f_{1}+\left|f_{1}\right|}{2}\left(\frac{E_v}{\rho}\right)_{L}+\frac{f_{1}-\left|f_{1}\right|}{2}\left(\frac{E_v}{\rho}\right)_{R} \vspace{5pt}
+\end{pmatrix}.
+\end{equation}
+ここで，
+\begin{align}
+f_{2}^\mathrm{AUSMV}&=U_{L}^{+} \rho_{L} U_{L}+U_{R}^{-} \rho_{R} U_{R}, \\
+f_{2}^\mathrm{A U S M D}&=\frac{f_{1}+\left|f_{1}\right|}{2} U_{L}+\frac{f_{1}-\left|f_{1}\right|}{2} U_{R}, \\
+s&=\frac{1}{2}\left(1+\min \left(1,\ K \frac{\left|p_{R}-p_{L}\right|}{\min \left(p_{L}, p_{R}\right)}\right)\right), \\
+\alpha_{L}&=\frac{2\left(\frac{p}{\rho}\right)_{L}}{\left(\frac{p}{\rho}\right)_{L}+\left(\frac{p}{\rho}\right)_{R}}, \quad \alpha_{R}=\frac{2\left(\frac{p}{\rho}\right)_{R}}{\left(\frac{p}{\rho}\right)_{L}+\left(\frac{p}{\rho}\right)_{R}},
+\end{align}
+\begin{align}
+    p_{L}^{+} &= 
+    \begin{cases}
+        p_{L}\left(\frac{u_{L}}{c_{m}}+1\right)^{2}\left(2-\frac{u_{L}}{c_{m}}\right) \frac{1}{4}, & \mathrm{if}\ \  \frac{\left|u_{L}\right|}{c_{m}} \leq 1, \\
+        p_{L} \frac{u_{L}+\left|u_{L}\right|}{2 u_{L}}, & \text{otherwise},
+    \end{cases}\\
+    p_{R}^{-} &= 
+    \begin{cases}
+        p_{R}\left(\frac{u_{R}}{c_{m}}-1\right)^{2}\left(2+\frac{u_{R}}{c_{m}}\right) \frac{1}{4}, & \mathrm{if}\ \  \frac{\left|u_{R}\right|}{c_{m}} \leq 1, \\
+        p_{R} \frac{u_{R}+\left|u_{R}\right|}{2 u_{R}}, & \text{otherwise},
+    \end{cases}
+\end{align}
+であり，$K$は通常，$K=10$の値を用いている．
+また，式~(\ref{eq:ausmdv})を式~(\ref{eq:num-flux})に従ってセル表面での数値流束に変換すると，
+\begin{align}
+\hat{\bm{F}}_\mathrm{AUSMDV}&=\begin{pmatrix}
+f_{1} \\
+n_{1} f_{2}+l_{1} f_{3}+m_{1} f_{4} \\
+n_{2} f_{2}+l_{2} f_{3}+m_{2} f_{4} \\
+n_{3} f_{2}+l_{3} f_{3}+m_{3} f_{4} \\
+f_{5} \\
+f_{5+s} \\
+f_{5+s+1}
+\end{pmatrix} \nonumber \\
+&=\begin{pmatrix}
+f_{1} \\
+n_{1} f_{2}+\frac{f_{1}+\left|f_{1}\right|}{2}\left(u_{1 L}-n_{1} U_{L}\right)+\frac{f_{1}-\left|f_{1}\right|}{2}\left(u_{1 R}-n_{1} U_{R}\right) \\
+n_{2} f_{2}+\frac{f_{1}+ \left|f_{1}\right|}{2}\left(u_{2 L}-n_{2} U_{L}\right)+\frac{f_{1}-\left|f_{1}\right|}{2}\left(u_{2 R}-n_{2} U_{R}\right) \\
+n_3f_{2}+\frac{f_{1}+\left|f_{1}\right|}{2}\left(u_{3 L}-n_{3} U_{L}\right)+\frac{f_{1}-\left|f_{1}\right|}{2}\left(u_{3 R}-n_{3} U_{R}\right) \\
+f_{5} \\
+f_{5+s} \\
+f_{5+s+1}
+\end{pmatrix},
+\end{align}
+となる．ここで注目すべきは，
+計算を行うにはセルの面ベクトルのみが必要になるということであり，
+接線方向のベクトルは数値流束の計算には必要がないことがわかる~\cite{takagi2000}．

@@ -1,0 +1,88 @@
+\chapter{SPARTAカーネルの取り扱いと計算方法}
+\label{chap:sparta}
+
+\begin{lstlisting}[caption={SPARTAカーネルの入力ファイル例},label={list:sparta}]
+seed                12345
+dimension           2
+global              gridcut 0.0 comm/sort yes
+global              surfmax 1000
+
+boundary            o ao p
+
+create_box          -0.01 0.01 0.0 0.01 -0.5 0.5
+
+create_grid         50 25 1
+balance_grid        rcb cell
+
+global              nrho 6.301e20 fnum 1.e12 weight cell radius
+
+species             air.species N2 O2 NO N O
+mixture             air N2 O2 vstream 6880.0 0.0 0.0 temp 219.0
+mixture             air N2 frac 0.767
+mixture             air O2 frac 0.233
+mixture             air NO N O frac 0
+
+fix                 in emit/face air xlo
+collide             vss air air.vss
+react               tce air.tce
+
+read_surf           data.circle origin 5 5 0 &
+                    trans -5 -5 0 scale 0.0006 0.0006 1 clip
+#write_surf          axi.surf
+#read_surf           circ.grid clip
+#read_surf           circ.grid scale 0.36 0.36 1 clip
+
+#surf_collide        1 specular
+surf_collide        1 diffuse 1000 1.0
+surf_modify         all collide 1
+
+timestep            1e-8
+
+#dump                2 image all 50 image.*.ppm type type pdiam 0.002 &
+#                    size 512 512 particle yes &
+#                    gline yes 0.005 &
+#                    surf proc 0.02 zoom 3.5
+#dump_modify         2 pad 4 
+
+compute myGrid grid all all n nrho massrho u v
+compute myN_ave reduce ave c_myGrid[1]
+compute myN_max reduce max c_myGrid[1]
+compute myTemp thermal/grid all all temp press
+compute myChem grid all species massfrac
+fix 1 ave/grid all 500 10 5000 c_myGrid[*] c_myTemp[*] c_myChem[*]
+compute myLambda lambda/grid f_1[2] f_1[6] N2 kall
+dump 1 grid all 5000 flow.* id f_1[*] c_myLambda[*]
+
+compute surf surf all air ke etot fx
+fix     surf ave/surf all 500 10 5000 c_surf[*]
+dump    surf surf all 5000 surf.* id f_surf[*]
+
+fix     drag ave/surf all 1 10 10 c_surf[3]
+compute drag reduce sum f_drag[*]
+
+#compute dist distsurf/grid all all dir 1 0 0
+#adapt_grid all refine value c_dist 1e-2 0.0 thresh less more file grid.0
+#adapt_grid all refine value c_dist 1e-4 0.0 thresh less more file grid.0
+
+#compute 1 grid all all nrho temp
+#fix 1 ave/grid all 1 10 50 c_1[*]
+#compute 2 lambda/grid f_grid[1] f_grid[6] N2 kall
+#dump 1 all all 100 tmp.grid id c_2[*]
+
+compute f isurf/grid all all fx
+fix 2 ave/surf all 500 10 5000 c_f[*]
+compute drag reduce sum f_2[*]
+#stats 1000
+stats_style step c_drag
+
+stats           5000
+stats_style     step cpu np nattempt ncoll nscoll nscheck c_myN_ave c_myN_max c_drag
+
+#run             500
+
+#adapt_grid all refine value c_2[2] 1.0 0.0 thresh less more file grid.*
+#adapt_grid all refine value c_2[2] 0.1 0.0 thresh less more file grid.*
+#fix 3 adapt 1000 all refine value c_myLambda[2] 3.0 0.0 thresh less more file grid.*
+
+run 50000
+\end{lstlisting}

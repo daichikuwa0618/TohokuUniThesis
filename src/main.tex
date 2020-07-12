@@ -1,0 +1,168 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% main.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%    「学位論文用 TeX フォーマット」
+%%%
+%%%    宮本　英昭 --- Miyamoto Hideaki
+%%%    東北大学大学院 航空宇宙工学専攻
+%%%    流体科学研究所 大西研究室
+%%%    miyamoto@rhd.ifs.tohoku.ac.jp
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\documentclass[12pt]{jsbook}
+% \documentclass[12pt,a4paper,openany]{jsbook} %両面印刷用
+\documentclass[12pt,a4paper,oneside]{jsbook} %片面印刷用
+\usepackage{amsmath}
+%\usepackage{txfonts}
+\usepackage{newtxtext,newtxmath}
+%%% 出力先に合わせて引数を選択 [dvips,dvipdfm,dviout]
+%\usepackage[dvips]{graphicx}
+\usepackage[dvipdfmx]{graphicx,color,hyperref}
+\usepackage{bmpsize}
+%\usepackage[dviout]{graphicx}
+%%% その他追加スタイル
+\usepackage{amsmath,amssymb}
+\usepackage{array}
+\usepackage{enumerate}
+\usepackage{longtable}
+\usepackage{float}
+\usepackage{mediabb}
+\usepackage{subfigure}
+% \usepackage{cite}
+\usepackage{mathrsfs}
+\usepackage{bm}
+\usepackage{bigints}
+\usepackage{here}
+\usepackage{siunitx} % SI unit
+\usepackage[version=3]{mhchem} % chemical eq.
+\usepackage[noto-otc,noalphabet,unicode]{pxchfon}
+% \usepackage[sourcehan-jp,noalphabet,unicode]{pxchfon}
+\usepackage[square,numbers,sort&compress]{natbib}
+\usepackage{url}
+\usepackage{listings,jlisting}
+\usepackage{pxjahyper} % 目次にリンクを付ける
+\hypersetup{
+	colorlinks=true, % リンクに色をつけない設定
+% 	bookmarks=true, % 以下ブックマークに関する設定
+    citecolor=blue,
+    urlcolor=blue,
+    linkcolor=blue,
+	bookmarksnumbered=true,
+	pdfborder={0 0 0},
+	bookmarkstype=toc,
+}
+\lstset{
+  basicstyle={\ttfamily},
+  identifierstyle={\small},
+  commentstyle={\smallitshape},
+  keywordstyle={\small\bfseries},
+  ndkeywordstyle={\small},
+  stringstyle={\small\ttfamily},
+  frame={tb},
+  breaklines=true,
+  columns=[l]{fullflexible},
+  numbers=left,
+  xrightmargin=0zw,
+  xleftmargin=3zw,
+  numberstyle={\scriptsize},
+  stepnumber=1,
+  numbersep=1zw,
+  lineskip=-0.5ex
+}
+\allowdisplaybreaks
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% 自作スタイル・マクロ読込
+\usepackage{jsplusmr} % jsbook 追加スタイル
+%%% レイアウト定義スタイル (排他)
+%\usepackage{mrsty1} % レイアウト定義スタイル 1 (ページ番号を上へ)
+\usepackage{mrsty2} % レイアウト定義スタイル 2 (ページ番号を下へ)
+\setcounter{tocdepth}{1}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% タイトルページ用各項目入力欄
+\setlength{\textheight}{240.0truemm}
+\setlength{\textwidth}{150.0truemm}
+\setlength{\hoffset}{0.0truemm}
+\setlength{\voffset}{-4.4truemm}
+\setlength{\topmargin}{0.0truemm}
+\setlength{\headheight}{0.0truemm}
+\setlength{\headsep}{0.0truemm}
+\setlength{\footskip}{11.0truemm}
+\setlength{\topskip}{0.0truemm}
+\setlength{\oddsidemargin}{10.6truemm}
+\setlength{\evensidemargin}{-0.4truemm}
+\title{人工流れ星周りにおける\\極超音速流体場の数値的研究}
+\author{B6TB1505\ \ 林\ 大地}
+\date{令和 2 年 3 月}
+%%% 以下 3 つは jsplusmr.sty 用
+\reporttype{\underline{東北大学工学部\ 卒業論文}}
+%\renewcommand{\reporttype}{\underline{東北大学工学部　卒業論文}}
+%\reporttype{平成 24 年度\\(平成 25 年 1 月 31 日提出)}
+%\majorin{平成 27 年度\\(平成 28 年 3 月 7 日提出)}
+%\majorin{平成 28 年 3 月}
+\univdept{機械知能・航空工学科\\大西・加藤・佐藤/高橋研究室}
+\majorin{}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% 図のキャプションのコロンを半角スペースに
+\makeatletter
+\long\def\@makecaption#1#2{%
+\vskip\abovecaptionskip
+\iftdir\sbox\@tempboxa{#1\hskip1zw#2}%
+\else\sbox\@tempboxa{#1\ #2}%
+\fi
+\ifdim \wd\@tempboxa >\hsize
+\iftdir #1\hskip1zw#2\relax\par
+\else #1\ #2\relax\par\fi
+\else
+\global \@minipagefalse
+\hbox to\hsize{\hfil\box\@tempboxa\hfil}%
+\fi
+\vskip\belowcaptionskip}
+\makeatother
+
+\renewcommand{\baselinestretch}{1.05}
+
+\begin{document}
+%%% 前付
+\frontmatter % 前付, ページ番号ローマ字，章番号なし
+%%% タイトルページ
+\maketitle
+%\clearpage
+%\normalstyles %通常スタイルモードに戻す
+%\pagestyle{empty}
+\thispagestyle{empty}
+\mbox{}\newpage
+%\include{abstract2}
+%\frontmatter % 前付, ページ番号ローマ字，章番号なし
+%\include{abstract}
+%\include{title} % タイトルページを自分で書く場合
+%\thispagestyle{empty}
+%\mbox{}\newpage
+%%% 目次
+\tableofcontents
+%%% 本文
+\mainmatter % 本文開始，\frontmatter と組で使用
+\include{intro}
+\include{methods}
+%\include{setup}
+\include{trajectory}
+\include{min_knud}
+%\include{result}
+\include{couple}
+\include{conclusion}
+%%% 付録
+% \appendix % 付録(Appendix)
+% \include{appenA}
+%%% 参考文献
+%\normalstyles %通常スタイルモードに戻す
+\bibliographystyle{jecon}
+\bibliography{myref}
+%\bibliographystyle{jplain} % アルファベット順
+%\bibliographystyle{junsrt} % 本文で参照された順
+\backmatter
+%\include{reference} % 参考文献を自分で書くならこっち
+%\bibliographystyle{aiaa}
+%\bibliography{myref}
+%%% 後付
+\include{thanks} %謝辞
+\backmatter % 後付，章番号なし
+\end{document}
+

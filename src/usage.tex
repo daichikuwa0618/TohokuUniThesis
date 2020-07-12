@@ -1,0 +1,913 @@
+%\documentclass[12pt]{jsbook}        
+%\usepackage{amsmath}
+%\usepackage{txfonts}
+%\usepackage[dvipdfm]{graphicx}
+%\usepackage{array}
+%\usepackage{enumerate}
+%\usepackage{longtable}
+%\usepackage{float}
+%\usepackage{graphicx,here}
+%\newcommand{\bm}[1]{\mbox{\boldmath{$#1$}}}
+%\allowdisplaybreaks
+%\usepackage{jsplusmr} % jsbook 追加スタイル
+%\usepackage{mrsty2} % レイアウト定義スタイル 2 (ページ番号を下へ)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% usage.tex
+%%% 数値計算法
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\chapter{数値計算}
+\chapter{数値計算法}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%  main.tex から\include : YaTeX 用コマンド
+%#!platex main.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\section{数値計算法}
+\section{支配方程式}
+本章では,極超音速流れ場に対する全体安定性解析を行うための数値計算手法について述べる.
+まず,
+解析に用いた既存の数値流体コード\cite{ishihara}の計算手法について簡潔に述べ,
+後に本研究で採用した時間発展法の全体安定性解析手法について述べる.
+
+\section{流れ場の数値計算法}
+\subsection{支配方程式}
+HIFiRE-1 の円錐形状周りの流れ場の計算は以下に示す二次元軸対称圧縮性 Navier-Stokes 方程式の解として得られる.
+\begin{equation}
+   \dfrac{\partial {\bm Q}}{\partial t}
+  +\dfrac{\partial ({\bm F}-{\bm F}_\mathrm{vis})}{\partial x}
+  +\dfrac{\partial ({\bm G}-{\bm G}_\mathrm{vis})}{\partial y}
+  +\dfrac{1}{y}({\bm H}-{\bm H}_\mathrm{vis})
+  ={\bm W}.
+  \label{tab:goveq}
+\end{equation}
+ここで,
+${\bm Q}$は保存量ベクトル,
+${\bm F}$, ${\bm G}$は対流流束ベクトル,
+${\bm F}_\mathrm{vis}$, ${\bm G}_\mathrm{vis}$は粘性流束ベクトル,
+${\bm H}$, ${\bm H}_\mathrm{vis}$はそれぞれ三次元圧縮性 Navier-Stokes 方程式を軸対称表記した際に対流流束と粘性流束から現れる項,
+${\bm W}$は生成項であり,
+以下のように与えられる.
+\begin{equation}
+  {\bm Q}=
+  \begin{pmatrix}
+  \rho\\
+  \rho u\\
+  \rho v\\
+  E\\
+  \rho_s\\
+  E_{v}+E_{el}
+  \end{pmatrix}. 
+\end{equation}
+%
+\begin{equation}
+  {\bm F}=
+  \begin{pmatrix}
+  \rho u\\
+  \rho u^2+p\\
+  \rho u v\\
+  (E+p) u\\
+  \rho_s u\\
+  (E_{v}+E_{el})u
+  \end{pmatrix}, 
+  {\bm G}=
+  \begin{pmatrix}
+  \rho v\\
+  \rho u v\\
+  \rho v^2+p\\
+  (E+p) v\\
+  \rho_s v\\
+  (E_{v}+E_{el})v
+  \end{pmatrix},
+  {\bm H}=
+  \begin{pmatrix}
+  \rho v\\
+  \rho u v\\
+  \rho v^2\\
+  (E+p) v\\
+  \rho_s v\\
+  (E_{v}+E_{el})v  
+  \end{pmatrix}.
+\end{equation}
+%
+\begin{eqnarray}
+  &&{\bm F}_\mathrm{vis}=
+  \begin{pmatrix}
+  0\\
+  \tau_{xx}\\
+  \tau_{xy}\\
+  u\tau_{xx}+v\tau_{xy}-q_{tx}-q_{vx}-\sum_{s}\rho_{s}u_{s}h_{s}\\
+  -\rho_{s}u_{s}\\
+  -q_{vx}-\sum_{s}\rho_{s}u_{s}(e_{vs}+e_{els})
+  \end{pmatrix}\nonumber,\\
+  &&{\bf G}_v=
+  \begin{pmatrix}
+  0\\
+  \tau_{yx}\\
+  \tau_{yy}\\
+  u\tau_{yx}+v\tau_{yy}-q_{ty}-q_{vy}-\sum_{s}\rho_{s}v_{s}h_{s}\\
+  -\rho_{s}v_{s}\\
+  -q_{vy}-\sum_{s}\rho_{s}v_{s}(e_{vs}+e_{els})
+  \end{pmatrix},\\
+  &&{\bm H}_\mathrm{vis}=
+  \begin{pmatrix}
+  -\rho_{s}v_{s}\\
+  \tau_{xy}\\
+  \tau_{yy}-\tau_{\theta \theta}\\
+  u\tau_{xy}+v\tau_{yy}-q_{ty}-q_{vy}-\sum_{s}\rho_{s}v_{s}h_{s}\\
+  -\rho_{s}v_{s}\\
+  -q_{vy}-\sum_{s}\rho_{s}v_{s}(e_{vs}+e_{els})
+  \end{pmatrix}\nonumber.
+\end{eqnarray}
+%
+\begin{equation}
+  {\bm W}=
+  \begin{pmatrix}
+  0\\
+  0\\
+  0\\
+  0\\
+  {\dot W}_{s}\\
+  {\dot W}_{v}
+  \end{pmatrix}.
+  \label{tab:termgen}
+\end{equation}
+%
+ここで,
+$\rho~\mathrm{[kg/m^3]}$は密度,
+$u,\ v~\mathrm{[m/sec]}$は$x,\ y$方向の速度成分,
+$E~\mathrm{[J/m^3]}$は単位体積あたりの全エネルギー, 
+$\rho_s~\mathrm{[kg/m^3]}$は化学種$s$の密度,
+$E_v~\mathrm{[J/m^3]}$は単位体積あたりの振動エネルギー, 
+$E_{el}~\mathrm{[J/m^3]}$は単位体積あたりの電子エネルギーを表し, 
+$p$は圧力,
+$\tau$は粘性応力,
+$u_s$は化学種$s$の拡散速度の$x$方向成分,
+$v_s$は化学種$s$の拡散速度の$y$方向成分,
+$q_t$は並進$\cdot$回転熱流束,
+$q_v$は振動$\cdot$電子励起熱流束,
+$h_s$は化学種$s$の単位質量あたりのエンタルピー,
+$e_{vs}$は化学種$s$の振動エネルギー,
+$e_{els}$は化学種$s$の電子励起エネルギー,
+$W_s$は化学種$s$の生成量,
+$W_v$は振動$\cdot$電子励起エネルギーの生成量を表す.
+ただし,
+下付き添字$s$は化学種$s$を表す.
+%
+粘性応力$\tau$は,
+Stokes の定理を用いて以下のように与えられる.
+\begin{eqnarray}
+  &&\tau_{xx}=\dfrac{2}{3}\mu \left( 2\dfrac{\partial u}{\partial x}-\dfrac{\partial v}{\partial y}-\frac{v}{y} \right),\\
+  &&\tau_{xy}=\tau_{yx}=\mu \left( 2\frac{\partial u}{\partial y}+\frac{\partial v}{\partial x} \right),\\
+  &&\tau_{yy}=\frac{2}{3}\mu \left( 2\frac{\partial v}{\partial y}-\frac{\partial u}{\partial x}-2\frac{v}{y} \right),\\
+  &&\tau_{\theta \theta}=\frac{2}{3}\mu \left( \frac{\partial v}{\partial y}-\frac{\partial u}{\partial x}+2\frac{v}{y} \right).
+\end{eqnarray}
+ここで,
+$\mu$は粘性係数を表す.
+%
+並進・回転熱流束$q_t$,
+振動・電子励起熱流束$q_v$は Fourier の法則より以下のように与えられる.
+\begin{eqnarray}
+&&q_{tx}=-\kappa_{tx}\frac{\partial{T}}{\partial{x}}, q_{ty}=-\kappa_{ty}\frac{\partial{T}}{\partial{y}},\\
+&&q_{vx}=-\kappa_{vx}\frac{\partial{T_v}}{\partial{x}}, q_{vy}=-\kappa_{vy}\frac{\partial{T_v}}{\partial{y}}.
+\end{eqnarray}
+ここで,
+$T$は並進・回転温度,
+$T_v$は振動・電子励起温度,
+$\kappa_t$は並進・回転温度に対する熱伝導係数,
+$\kappa_v$は振動・電子励起温度に対する熱伝導係数を表す.
+%
+化学種の拡散速度$u_s$は Fick の法則より以下のように与えられる.
+\begin{equation}
+\rho_{s}u_{s}=-\rho D_s\frac{\partial{c_s}}{\partial{x}}, \rho_{s}v_{s}=-\rho D_s\frac{\partial{c_s}}{\partial{y}}.
+\end{equation}
+ここで,
+$D_s$は化学種$s$の拡散係数を表す.
+
+本計算では,
+O, N, NO, O$_{\rm2}$,N$_{\rm2}$の 5 化学種の内,
+O, N, NO の 3 化学種についての質量保存の式を解く.
+O$_{\rm2}$, N$_{\rm2}$の密度は,
+以下の元素組成一定の仮定を用いて得られる.
+\begin{eqnarray}
+&&\rho_{{\rm O}_2} = M_{{\rm O}_2} (\alpha_1 \rho + \alpha_2 \rho_{\rm O} + \alpha_3 \rho_{\rm NO} ), \\
+&&\rho_{{\rm N}_2} = M_{{\rm N}_2} (\alpha_4 \rho + \alpha_5 \rho_{\rm N} + \alpha_6 \rho_{\rm NO} ).
+\end{eqnarray}
+ここで,
+$M_{s}$は化学種$s$の分子量を表し,
+パラメーター$\alpha{_i}$は以下のように与える.
+\begin{eqnarray}
+&&\alpha_{1}=\frac{1}{M_{{\rm O}_2}+\frac{M_{{\rm N}_2}}{fr}},\\
+&&\alpha_{2}=-\alpha_1 \left( 1+\frac{1}{2} \frac{M_{{\rm N}_2}}{M_{\rm O}} \right),\\
+&&\alpha_{3}=-\alpha_1 \left( 1+\frac{1}{2fr} \left( \frac{1}{fr} -1 \right) \frac{M_{{\rm N}_2}}{M_{\rm NO}} \right),\\
+&&\alpha_{4}=\frac{1}{M_{{\rm N}_2}+M_{{\rm O}_2}fr},\\
+&&\alpha_{5}=-\alpha_4 \left( 1+\frac{fr}{2} \frac{M_{{\rm O}_2}}{M_{\rm N}} \right),\\
+&&\alpha_{6}=-\alpha_4 \left( 1-\frac{1-fr}{2} \frac{M_{{\rm O}_2}}{M_{\rm NO}} \right),\\
+&&fr=\frac{N_{\rm O}+2N_{{\rm O}_2}+N_{\rm NO}} {N_{\rm N}+2N_{{\rm N}_2}+N_{\rm NO}}.
+\end{eqnarray}
+ここで,
+$N_{s}$は化学種$s$のモル濃度であり,
+以下のように与える.
+\begin{equation}
+N_s=\frac{\rho_s}{M_s}.
+\end{equation}
+
+\subsection{輸送係数モデル}
+
+空気を構成する化学種の粘性係数は,
+Blottner のモデル\cite{blottner}により次のように与えられる.
+\begin{equation}
+\mu_s=0.1{\rm exp}[(A_s{\rm ln}T+B_s){\rm ln}T+C_s].
+\end{equation}
+ここで,
+定数$A_s$, $B_s$, $C_s$は表\ref{tab:blocoef}に示す.
+それぞれの化学種における並進・回転温度と振動・電子励起温度の熱伝導係数$\kappa_{ts}$, $\kappa_{vs}$は Euken\cite{euken}の関係式より以下のように求める.
+\begin{eqnarray}
+&& \kappa_{ts}=\mu_s \left( \frac{5}{2} c_{v{\rm tr}s}+c_{v{\rm rot}s} \right), \\
+&& \kappa_{vs}=\mu_s c_{v{\rm vib}s}.
+\end{eqnarray}
+ここで,
+化学種$s$の並進定積比熱$c_{v{\rm tr}s}$,
+回転定積比熱$c_{v{\rm rot}s}$,
+振動定積比熱$c_{v{\rm vib}s}$は以下のように与える.
+\begin{eqnarray}
+&& c_{v{\rm tr}s}=\frac{R}{M_s},\\
+&& c_{v{\rm rot}s}=\left\{ 
+                   \begin{array}{ll}
+                      \frac{R}{M_s} & {\rm for~ NO,O_2,N_2}         \\
+                      0 & {\rm for~ O,N}       
+                   \end{array} \right.,\\
+&& c_{v{\rm vib}s}=\left\{ \begin{array}{ll}
+                      \frac{R}{M_s} & {\rm for~ NO,O_2,N_2}         \\
+                      0 & {\rm for~ O,N}       
+              \end{array} \right..
+\end{eqnarray}
+ここで,
+$R$は一般気体定数（=8.31447）である.
+多成分気体の粘性係数$\mu$および各熱伝導係数$\kappa_{ts}$, $\kappa_{vs}$は Wilke の近似混合則\cite{wilke}より以下のように求める.
+\begin{eqnarray}
+&&\mu=\sum_{s}\frac{X_{s}\mu_{s}}{\phi_{s}},\\
+&&\kappa_{ts}=\sum_{s}\frac{X_{s}\kappa_{ts}}{\phi_{s}},\\
+&&\kappa_{vs}=\sum_{s}\frac{X_{s}\kappa_{vs}}{\phi_{s}}.
+\end{eqnarray}
+ここで,
+$X_s$はモル分率,
+$\phi_s$は補助関数であり,
+以下のように定義される.
+\begin{eqnarray}
+&&X_s=\frac{\frac{\rho_s}{M_s}}{\sum_{r}\frac{\rho_r}{M_r}} ,\\
+&&\phi_s=\sum_{r}X_r \left[ 1+\sqrt{\frac{\mu_s}{\mu_r}} \left( \frac{M_r}{M_s} \right )^{\frac{1}{4}} \right]^2 \left[ \sqrt{8 \left( 1+ \frac{M_s}{M_r}\right)} \right]^{-1}.
+\end{eqnarray}
+また,
+化学種$s$の拡散係数$D_s$はシュミット数一定（$S_c$=0.5）を仮定し,
+次式のように与える.
+\begin{equation}
+D_s=\frac{\mu}{S_{c}\rho}.
+\end{equation}
+
+　
+     \begin{table}[!htbp]
+      \begin{center}
+       \caption{Blottner の粘性係数モデル \cite{blottner}}
+        \begin{tabular}{c c c c} \hline \hline
+                        化学種 & $A_s$ & $B_s$ & $C_s$ \\ \hline 
+                             O    & 0.0203144 & 0.4294404 & $-$11.6031403 \\
+                             N    & 0.0115572 & 0.6031079 & $-$12.4327495 \\
+                             NO   & 0.0436378 &$-$0.0335511 &  $-$9.5676430 \\
+                             O$_2$& 0.0449290 &$-$0.0826158 &  $-$9.2019475 \\
+                             N$_2$& 0.0268142 & 0.3177838 & $-$11.3155513 \\ 
+                             \hline \hline
+        \end{tabular}
+       \label{tab:blocoef}
+      \end{center}
+     \end{table} 
+
+\subsection{熱化学モデル}
+極超音速流れ場中の,
+鈍頭形状をもつ物体においては,
+物体前方に強い衝撃波が形成され,
+衝撃層内部では熱的$cdot$化学的に平衡状態に至らない場合が多いため,
+非平衡性を考慮する必要がある.
+本研究では熱化学非平衡モデルとして,
+並進温度と回転温度が平衡,
+振動温度と電子励起温度が平衡であることを仮定した Park の 2 温度モデル\cite{park}を用いる.
+
+\subsection*{状態方程式}
+並進・回転温度$T$は以下の式より求められる.
+\begin{equation}
+E=\sum_{s}\rho_{s}c_{vs}T+E_{v}+E_{el}+\sum_{s}\rho_{s}h^{0}_{s}+\frac{1}{2}\rho(u^{2}+v^{2}).
+\end{equation}
+ここで,
+$h^{0}_{s}$は化学種$s$の生成エンタルピーであり,表\ref{tab:genenthlpy}で与えられる.
+$c_{vs}$は並進・回転定積比熱であり,
+並進定積比熱$c_{v{\rm tr}s}$と回転定積比熱$c_{v{\rm rot}s}$を用いて,
+以下のように与えられる.
+\begin{equation}
+c_{vs}=c_{v{\rm tr}s}+c_{v{\rm rot}s}.
+\end{equation}
+ここで,
+調和振動子かつ Boltzman 平衡分布を仮定すると,
+単位体積あたりの振動エネルギー$E_v$と二原子分子の振動エネルギー$e_{vs}$は以下のように与えられる.
+\begin{eqnarray}
+E_v&=&\sum_{s}\rho_{s}e_{vs},\\
+e_{vs}&=&\frac{R}{M_s}\frac{\theta_{vs}}{{\rm exp} \left( \frac{\theta_{vs}}{T_v} \right) -1}.
+\end{eqnarray}
+ここで,
+$\theta_{vs}$は化学種$s$の振動の特性温度であり,
+表\ref{tab:vibchatem}に示す.
+また,
+第一電子励起準位までを考慮すると,
+単位体積あたりの電子励起エネルギー$E_{el}$と化学種$s$の電子励起エネルギー$e_{els}$は以下のように与えられる.
+\begin{eqnarray}
+E_{el}&=&\sum_{s}\rho_{s}e_{els},\\
+e_{els}&=&\frac{R}{M_s}\frac{g_{1s}\theta_{els}{\rm exp} \left( \frac{-\theta_{els}}{T_v} \right) }{ g_{0s}+g_{1s}{\rm exp}\left( \frac{-\theta_{els}}{T_v} \right) }~(s={\rm O,N,O_2}).
+\end{eqnarray}
+ただし,
+励起状態$k$の縮退度$g_{ks}$と電子励起特性温度$\theta_{els}$は表\ref{tab:elchatem}に示す.
+振動・電子励起温度$T_v$は保存量$E_v$+$E_{el}$に対する関数として以下のように書くことができ,
+Newton-Raphson 反復法により数値的に求める.
+\begin{equation}
+E_{v}+E_{el}=function(\rho_s,T_v).
+\end{equation}
+圧力$p$は状態方程式から次のように与えられる.
+\begin{equation}
+p=\sum_{s}\rho_s\frac{R}{M_s}T.
+\end{equation}
+また,
+各化学種$s$の単位質量あたりのエンタルピーは以下のように定義する.
+\begin{equation}
+h_s=c_{vs}T+\frac{R}{M_s}T+e_{vs}+e_{els}+h^{0}_{s}.
+\end{equation}
+
+\subsection*{化学反応}
+本計算では,
+5 化学種に対する 17 反応を考慮する.　
+\begin{eqnarray}
+{\rm O}_2+{\rm M} & \rightleftharpoons &  {\rm O}+{\rm O}+{\rm M}, \\
+{\rm N}_2+{\rm M} & \rightleftharpoons &  {\rm N}+{\rm N}+{\rm M}, \\
+{\rm NO}+{\rm M}  & \rightleftharpoons &  {\rm N}+{\rm O}+{\rm M}, \\
+{\rm N}_2+{\rm O} & \rightleftharpoons &  {\rm NO}+{\rm N}, \\
+{\rm NO}+{\rm O}  & \rightleftharpoons &  {\rm O}_2+{\rm N}.
+\end{eqnarray}
+ここで,
+M は各化学種（O, N, NO, O$_{\rm 2}$, N$_{\rm 2}$）を表す.
+$i$反応ごとの正味の生成質量$R_i$は以下のように与えられる.
+\begin{eqnarray}
+&&R_1=\sum_{s} \left[ k_{f1,s} \frac{\rho_{O_2}}{M_{O_2}} \frac{\rho_{s}}{M_{s}} -k_{b1,s} \left( \frac{\rho_{O}}{M_{O}} \right) ^2 \frac{\rho_{s}}{M_{s}} \right],\\
+&&R_2=\sum_{s} \left[ k_{f2,s} \frac{\rho_{N_2}}{M_{N_2}} \frac{\rho_{s}}{M_{s}} -k_{b2,s} \left( \frac{\rho_{N}}{M_{N}} \right) ^2 \frac{\rho_{s}}{M_{s}} \right],\\
+&&R_3=\sum_{s} \left[ k_{f3,s} \frac{\rho_{NO}}{M_{NO}} \frac{\rho_{s}}{M_{s}} -k_{b3,s} \frac{\rho_{N}}{M_{N}} \frac{\rho_{O}}{M_{O}} \frac{\rho_{s}}{M_{s}} \right],\\
+&&R_4=k_{f4} \frac{\rho_{N_2}}{M_{N_2}} \frac{\rho_{O}}{M_{O}} -k_{b4} \frac{\rho_{NO}}{M_{NO}} \frac{\rho_{N}}{M_{N}},\\
+&&R_5=k_{f5} \frac{\rho_{NO}}{M_{NO}} \frac{\rho_{O}}{M_{O}} -k_{b5} \frac{\rho_{O_2}}{M_{O_2}} \frac{\rho_{N}}{M_{N}}.
+\end{eqnarray}
+化学種$s$に対する化学反応による生成量${\dot W}_s$は以下のようになる.
+\begin{eqnarray}
+{\dot W}_{\rm O} &=& {\rm M}_{\rm O}(2R_1+R_3-R_4-R_5),\\
+{\dot W}_{\rm N} &=& {\rm M}_{\rm N}(2R_1+R_3-R_4-R_5),\\
+{\dot W}_{\rm NO} &=& {\rm M}_{\rm N}(-R_3+R_4-R_5),\\
+{\dot W}_{\rm O_{2}} &=& {\rm M}_{\rm O_{2}}(-R_1+R_5),\\
+{\dot W}_{\rm N_{2}} &=& {\rm M}_{\rm N_{2}}(-R_2+R_4).
+\end{eqnarray}
+順反応速度係数$k_{fi}$および逆反応速度$k_{bi}$は Park の 2 温度モデル\cite{park}より,
+以下の式から求める.
+\begin{eqnarray}
+&&k_{fi}=C_{fi}T^{\eta_{i}}_{a}{\rm exp} \left( \frac{-\theta_{i}}{T_{a}} \right),\\
+&&k_{bi}=\frac{k_{fi}}{K_{eqi}}.
+\end{eqnarray}
+Arrhenius パラメーター$C_{fi}$,~${\eta_i}$,~${\theta_i}$を表\ref{tab:arrcoef}に示す.
+平衡係数$K_{eq}$は以下の曲線適合近似式により与えられる.
+\begin{eqnarray}
+K_{eq}&=&{\rm exp} \left( A_1Z+A_2+A_3{\rm ln}\frac{1}{Z}+A_4\frac{1}{Z}+A_5\frac{1}{Z^2} \right),\\
+Z&=&\frac{T_a}{10000}.
+\end{eqnarray}
+係数$A_{i}$の値を表\ref{tab:equcoef}に示す.
+ここで,
+$T_a$は反応制御温度であり,
+以下のように定義する.
+\begin{equation}
+T_a \equiv \sqrt{TT_v}.
+\end{equation}
+
+
+     \begin{table}[!htbp]
+      \begin{center}
+       \caption{生成エンタルピー}
+        \begin{tabular}{c c} \hline \hline
+                        化学種 & $h^{0}_{s}[{\rm J/kg}]$\\ \hline 
+                             O    & 15.588 \\
+                             N    & 33.755 \\
+                             NO   & 3.0077 \\
+                             O$_2$& 0 \\
+                             N$_2$& 0 \\ 
+                             \hline \hline
+        \end{tabular}
+       \label{tab:genenthlpy}
+      \end{center}
+     \end{table} 
+
+     \begin{table}[!htbp]
+      \begin{center}
+       \caption{振動特性温度}
+        \begin{tabular}{c c} \hline \hline
+                        化学種 & $\theta_{vs}[{\rm K}]$\\ \hline 
+                             NO   & 2712 \\
+                             O$_2$& 2260 \\
+                             N$_2$& 3390 \\ 
+                             \hline \hline
+        \end{tabular}
+       \label{tab:vibchatem}
+      \end{center}
+     \end{table} 
+
+     \begin{table}[!htbp]
+      \begin{center}
+       \caption{縮退度および電子励起特性温度}
+        \begin{tabular}{c c c c} \hline \hline
+                        化学種 & $\theta_{els}[{\rm K}]$ & g$_{0s}$ & g$_{1s}$ \\ \hline 
+                             O    & 22713   & 9 & 5 \\
+                             N    & 26498.5 & 4 & 10\\
+                             O$_2$& 11356.5 & 3 & 2 \\ 
+                             \hline \hline
+        \end{tabular}
+       \label{tab:elchatem}
+      \end{center}
+     \end{table} 
+
+     \begin{table}[!htbp]
+      \begin{center}
+       \caption{順反応速度係数に関する定数}
+        \begin{tabular}{c c c c c} \hline \hline
+      反応 & $M$ & $C_{fi}[{\rm m}^{3}/({\rm mol} \cdot {\rm sec})]$ & $\eta_{i}$ & $\theta_{i}$[{\rm K}] \\ \hline 
+      ${\rm O}_2+{\rm M} \rightleftharpoons {\rm O}+{\rm O}+{\rm M}$ & O, N          & $1.0\times10^{16}$ &$-$1.5& 59500 \\
+                                                                     & NO, O$_2$,N$_2$ & $2.0\times10^{15}$ &$-$1.5& 59500 \\ \hline
+      ${\rm N}_2+{\rm M} \rightleftharpoons {\rm N}+{\rm N}+{\rm M}$ & O, N          & $3.0\times10^{16}$ &$-$1.6& 113200 \\
+                                                                     & NO, O$_2$,N$_2$ & $7.0\times10^{15}$ &$-$1.6& 113200 \\ \hline
+      ${\rm NO}+{\rm M}  \rightleftharpoons {\rm N}+{\rm O}+{\rm M}$ & O, N, NO        & $1.1\times10^{11}$ & 0.0& 75500 \\
+                                                                     & O$_2$, N$_2$    & $5.0\times10^{9}$  & 0.0& 75500 \\ \hline
+      ${\rm N}_2+{\rm O} \rightleftharpoons {\rm NO}+{\rm N}$        & --   & $6.4\times10^{11}$ &$-$1.0& 38400 \\ \hline
+      ${\rm NO}+{\rm O}  \rightleftharpoons {\rm O}_2+{\rm N}$       & --   & $8.4\times10^{6}$  & 0.0& 19450 \\ 
+                             \hline \hline
+        \end{tabular}
+       \label{tab:arrcoef}
+      \end{center}
+     \end{table} 
+
+     \begin{table}[!htbp]
+      \begin{center}
+       \caption{平衡定数に関する係数}
+        \begin{tabular}{c c c c c c} \hline \hline
+                        反応 & A$_1$ & A$_2$ & A$_3$ & A$_4$ & A$_5$ \\ \hline 
+  ${\rm O}_2+{\rm M} \rightleftharpoons {\rm O}+{\rm O}+{\rm M}$ & 0.553880 & 16.275511 & 1.776300 & $-$6.57200 & 0.031445 \\
+  ${\rm N}_2+{\rm M} \rightleftharpoons {\rm N}+{\rm N}+{\rm M}$ & 1.535100 & 15.42160  & 1.29930  & $-$11.4940 &$-$0.006980 \\
+  ${\rm NO}+{\rm M}  \rightleftharpoons {\rm N}+{\rm O}+{\rm M}$ & 0.558890 & 14.53108  & 0.553960 & $-$7.53040 &$-$0.014089 \\
+  ${\rm N}_2+{\rm O} \rightleftharpoons {\rm NO}+{\rm N}$        & 0.976460 & 0.890430  & 0.745720 & $-$3.96420 &$-$0.007123 \\
+  ${\rm NO}+{\rm O}  \rightleftharpoons {\rm O}_2+{\rm N}$       & 0.004815 &$-$1.744300  &$-$1.22270  & $-$0.95824 &$-$0.045545 \\
+                             \hline \hline
+        \end{tabular}
+       \label{tab:equcoef}
+      \end{center}
+     \end{table} 
+
+\subsection*{エネルギー交換}
+
+式(\ref{tab:termgen})で示した振動・電子励起エネルギーの生成項は以下の式で与えられる.
+\begin{equation}
+{\dot W}_v=Q_{T-V}+Q_{D-V}+Q_{E-Ex}.
+\end{equation}
+ここで,
+$Q_{T-V}$は並進・回転--振動エネルギーの緩和項,
+$Q_{D-V}$は解離反応による振動エネルギーの生成項,
+$Q_{E-Ex}$は化学反応による電子励起エネルギーの生成項を表す.
+$Q_{T-V}$は Park が修正した Landau-Teller 緩和方程式を用いて以下のように与えられる.
+\begin{eqnarray}
+&&Q_{T-V}=\sum_{s}Q_{{T-V}_s}, \\
+&&Q_{{T-V}_s}=\rho_{s}\frac{e^{\ast}_{vs}(T)-e_{vs}}{\tau_{sLT}+\tau_{cs}} \left| \frac{T_{shock}-T{v}}{T_{shock}-T_{vshock}} \right| ^{S-1}.
+\end{eqnarray}
+ここで,
+\begin{equation}
+S=3.5{\rm exp} \left( -\frac{5000}{T_{shock}} \right).
+\end{equation}
+また,
+$e^{\ast}_{vs}(T)$は並進・回転温度$T$における振動エネルギー,
+$T_{shock}$, $T_{vshock}$は衝撃波背後の代表温度であり,
+%$T_{shock}$は機体表面から放射状に広がる各軸において同じ値を取り,
+各方位角におけるセル番号$j$を用いて以下のように定義する.
+\begin{equation}
+T_{shock}=Max(3991.2,T(j)).
+\end{equation}
+$\tau_{sLT}$は Landau-Teller 緩和時間を表し,
+Millikan-White のモデル\cite{millikan}を用い,
+以下のように与えられる.
+\begin{eqnarray}
+&&\tau_{sLT}=\frac{\sum_{s}X_r}{\sum_{r}\frac{X_r}{\tau_{srLT}}},\\
+&&\tau_{srLT}=\frac{1}{p}{\rm exp} \left( A_{sr}T^{-1/3}-B_{sr} \right) p~in~atm.
+\end{eqnarray}
+ここで,
+係数$A_{sr}$, $B_{sr}$を表\ref{tab:LTcoef}に示す.
+また,
+Park の衝突制限緩和時間$\tau_{cs}$は以下のように与えられる.
+\begin{equation}
+\tau_{cs}=\frac{1}{{\bar c}_s \sigma_{sr} N_s N_A}.
+\end{equation}
+ここで,
+$N_A$はアボガドロ数(=$6.02214\times10^{23}$)
+であり,
+化学種$s$の熱速度${\bar c}_s$,
+制限衝突面積$\sigma_{sr}$は以下のように与える.
+\begin{eqnarray}
+&&{\bar c_{s}}=\sqrt{\frac{8RT}{\pi M_{s}}},\\
+&&\sigma_{sr}=10^{-21}(50000/T)^2.
+\end{eqnarray}
+$Q_{D-V}$は解離反応による振動エネルギーの増減を表し,
+以下のように与えられる.
+\begin{equation}
+Q_{D-V}=\sum_{s}{\hat D}_{s}{\dot W}_{s}.
+\end{equation}
+本研究では,
+選択的解離モデルを用い,
+分子の解離エネルギー${\tilde D}_{s}$の 30\%を解離する分子の平均振動エネルギー${\hat D}_{s}$とする.
+ここで,
+解離エネルギー${\tilde D}_{s}$を表\ref{tab:decene}に示す.
+$Q_{E-Ex}$は各化学種の生成量から振動エネルギーと電子励起エネルギーの収支を考え以下のように与えられる.
+\begin{equation}
+Q_{E-Ex}=\sum_{s}e_{els}{\dot W}_{s}.
+\end{equation}
+
+
+
+
+
+     \begin{table}[!htbp]
+      \begin{center}
+       \caption{振動緩和時間に関する定数}
+        \begin{tabular}{c c c c} \hline \hline
+      分子化学種 & 衝突化学種 & $A_i$ & $B_i$  \\ \hline 
+      ${\rm NO} $ &  O       & 49.5 & 0.042 \\
+                  &  N       & 49.5 & 0.042 \\
+                  &  NO      & 49.5 & 0.042 \\
+                  &  O${_2}$ & 49.5 & 0.042 \\
+                  &  N${_2}$ & 49.5 & 0.042 \\ \hline
+      ${\rm O{_2}} $ &  O    & 47.7 & 0.059 \\
+                  &  N       & 72.4 & 0.015 \\
+                  &  NO      & 136  & 0.030 \\
+                  &  O${_2}$ & 138  & 0.030 \\
+                  &  N${_2}$ & 134  & 0.030 \\ \hline
+      ${\rm N{_2}} $ &  O    & 72.4 & 0.015 \\
+                  &  N       & 180  & 0.026 \\
+                  &  NO      & 225  & 0.029 \\
+                  &  O${_2}$ & 229  & 0.030 \\
+                  &  N${_2}$ & 221  & 0.029 \\  
+                             \hline \hline
+        \end{tabular}
+       \label{tab:LTcoef}
+      \end{center}
+     \end{table} 
+
+\clearpage
+
+     \begin{table}[!htbp]
+      \begin{center}
+       \caption{解離エネルギー}
+        \begin{tabular}{c c} \hline \hline
+                        化学種 & ${\tilde D}_i$[kJ/mol]\\ \hline 
+                             NO   & 75500 \\
+                             O$_2$& 59360 \\
+                             N$_2$&113200 \\ 
+                             \hline \hline
+        \end{tabular}
+       \label{tab:decene}
+      \end{center}
+     \end{table} 
+
+\subsection{離散化手法}
+
+本研究では,
+空間の離散化には有限体積法を用いる.
+支配方程式(\ref{tab:goveq})を任意の四辺形セル$S$について積分を行う.
+%以下のように与えられる.
+\begin{equation}
+\iint_{S} \left\{ \frac{\partial {\bf Q}}{\partial t}+\frac{\partial {\bf F}-{\bf F}_{vis}}{\partial x}+\frac{\partial {\bf G}-{\bf G}_{vis}}{\partial y}+\frac{1}{y}({\bf H}-{\bf H}_{vis}) \right\} dS = \iint _{S}{\bf W}dS. 
+\end{equation}
+また,
+セルの形状が時間変化しないと仮定し,
+流束ベクトルに対してガウスの発散定理を用いると,
+\begin{equation}
+\frac{\partial}{\partial t} \iint _{S}{\bf Q}dS+\oint_{\partial S} \left\{ ({\bf F}-{\bf F}_{vis})n_{x}+({\bf G}-{\bf G}_{vis})n_{y}\right\}dl+\iint_{S}\frac{1}{y}({\bf H}-{\bf H}_{vis})dS = \iint _{S}{\bf W}dS. 
+\end{equation}
+ここで,
+$n_{x}$, $n_{y}$はそれぞれセル境界の法線ベクトルの$x$, $y$成分を表す.
+各セルでの値は,
+そのセル自身の面積を用いて規格化し,
+以下のように与えられる.
+\begin{eqnarray}
+&&{\hat {\bf Q}}=\frac{\iint_S{\bf Q}dS}{\iint_S~dS},\\
+&&{\hat {\bf H}}=\frac{\iint_S{\bf H}dS}{\iint_S~dS},\\
+&&{\hat {\bf H}}_{vis}=\frac{\iint_S{\bf H}_{vis}dS}{\iint_S~dS},\\
+&&{\hat {\bf W}}=\frac{\iint_S{\bf W}dS}{\iint_S~dS}.
+\end{eqnarray}
+離散化の際に,
+セルの面積$\Delta S(={\iint_S~dS})$,
+セル境界の長さ$\Delta l(=dl)$,
+時間の刻み幅$\Delta t(=\partial t)$
+をそれぞれ与え,
+離散化された式は以下のように表される.
+\begin{equation}
+\frac{\Delta {\hat {\bf Q}}}{\Delta t}\Delta S+\sum^{4}_{k=1} \left\{ ({\bf F}-{\bf F}_{vis})n_{x}+({\bf G}-{\bf G}_{vis})n_{y}\right\} \Delta l_{k}+\frac{1}{y}({\hat {\bf H}}-{\hat {\bf H}}_{vis})\Delta S = {\hat {\bf W}}\Delta S. 
+\end{equation}
+本研究では,
+時間積分にはオイラー陽解法を用いており,
+以下のように与えられる.
+\begin{eqnarray}
+{\hat {\bf Q}}^{n+1}&=&{\hat {\bf Q}}^{n}+\Delta{\hat {\bf Q}} \nonumber\\
+                    &=&{\hat {\bf Q}}^{n}-\frac{\Delta t}{\Delta S}\sum^{4}_{k=1} \left\{ ({\bf F}-{\bf F}_{vis})n_{x}+({\bf G}-{\bf G}_{vis})n_{y}\right\} \Delta l_{k}-{\Delta t} \left\{ \frac{1}{y}({\hat {\bf H}}-{\hat {\bf H}}_{vis})-{\hat {\bf W}} \right\}\nonumber.\\ 
+\end{eqnarray}
+
+また,
+数値流束は AUSM-DV 風上スキーム\cite{ausmdv}を用い,
+空間制度は MUSL 法\cite{musl}を用いて 2 次精度化を行う.
+
+\section{全体安定性解析}
+
+全体安定性解析は,
+CFD と組み合わせて用いることで流れ場全体に対して線形安定性を取り扱う解析方法のことであり,
+流れ場に対する固有値問題に帰着することで,
+流れ場全体として持つ波を流れ場全体のモードごとに分離し,
+特徴的な構造を抽出することができる.
+従って,
+物体形状や流れ場を近似したり,
+制限すること無く安定性解析を行うことができる.
+全体安定性解析には様々な手法が提案されており,
+本研究では,
+Eriksson と Rizzi により数値的安定性を解析的に扱うために提案され,
+千葉により流体安定性解析に応用された時間発展法を用いる.
+この手法は,
+既存の計算コードと組み合わせやすく,
+流体の運動方程式を変形すること無く用いることができ,
+さらに,
+matrix-free methods と呼ばれる解法の一つである Arnoldi 法を用いるため,
+計算コストを削減しつつ,
+流れ場の特徴抽出を行うことができる.
+これらは,
+流れ場が複雑で計算コストが大きい極超音速流れ場の安定性解析を行うには適している.
+ここでは,
+まず,
+全体安定性解析の時間発展法の手法を説明し,
+次に計算を行う際の手順を説明する.
+
+\subsection*{解析手法}
+
+Navier-Stokes 方程式に支配される数値解の時間発展は以下のように記述できる.
+\begin{equation}
+  \frac{\partial {\bf q}}{\partial t} = {\bf f}({\bf q}), 
+\label{governingeq}
+\end{equation}
+%\begin{equation}
+%  \frac{\partial {\bf q}^{c}}{\partial t} = {\bf f}({\bf q}^{c}), 
+%\label{governingeq}
+%\end{equation}
+
+\begin{equation}
+  {\bf q}=(\rho_1, (\rho {\bf u})_1, E_1, \cdots
+         ,\rho_N, (\rho {\bf u})_N, E_N) 
+\end{equation}
+%\begin{equation}
+%  {\bf q}^{c}=(\rho_1, (\rho {\bf u})_1, E_1, \cdots
+%         ,\rho_N, (\rho {\bf u})_N, E_N) 
+%\end{equation}
+ここで$N$は格子点の総数であり,
+$\bf{q}$は各格子点上の保存量を並べたベクトルである.
+%$\bf{q}^{c}$は各格子点上の保存量を並べたベクトルである.
+また, 
+$\rho$は密度, 
+${\bf u}$は速度, 
+$E$は全エネルギーを表す.
+保存量$\bf{q}$は CFD 計算より得られた定常解を基本量$\bar{\bf{q}}$とし,
+%保存量$\bf{q}^{c}$は CFD 計算より得られた定常解を基本量$\bar{\bf{q}}^{c}$とし,
+微小擾乱をそこからの変動量$\tilde{\bf{q}}$
+%微小擾乱をそこからの変動量$\tilde{\bf{q}}^{c}$
+と考えて以下のように分解する.
+\begin{eqnarray}
+  {\bf q} = \bar{\bf q}+\tilde{\bf q}.
+%  {\bf q}^{c} = \bar{\bf q}^{c}+\tilde{\bf q}^{c}.
+\label{decomposition}
+\end{eqnarray}
+%式(\ref{decomposition})を基本量まわりで Taylor 展開し,式(\ref{governingeq})に代入し擾乱を含んだ式を得る.
+基本量は時間変化せず,
+微小擾乱よりはるかに大きいとすると式(\ref{governingeq})を線形化することができ,
+微小擾乱$\tilde{\bf{q}}$に対して以下の方程式を得る.
+%微小擾乱$\tilde{\bf{q}}^{c}$に対して以下の方程式を得る.
+\begin{equation}
+  \frac{\partial \tilde{\bf{q}}}{\partial t}
+  =\biggl(\frac{\partial {\bf f}({\bf q})}{\partial{\bf q}}\biggr)_{{\bf q} =\bar{\bf q}} \tilde{\bf q}
+  \equiv {\bf A} \tilde{\bf q}.
+\label{matA}
+\end{equation}
+%\begin{equation}
+%  \frac{\partial \tilde{\bf{q}}^{c}}{\partial t}
+%  =\biggl(\frac{\partial {\bf f}({\bf q})}{\partial{\bf q}}\biggr)_{{\bf q} =\bar{\bf q}^{c}} \tilde{\bf q}^{c}
+%  \equiv {\bf A} \tilde{\bf q}^{c}.
+%\end{equation}
+この係数行列${\bf A}$の固有値問題を解くことにより流れ場の安定性解析を行うことができ,
+固有ベクトルとそれに対応する固有値を以下のように得ることができる.
+\begin{equation}
+  \frac{\partial {\boldsymbol \phi}_m}{\partial t}=\lambda_m {\boldsymbol \phi}_m.
+\end{equation}
+つまり,
+\begin{equation}
+  {\bf A}\tilde{\bf q} = \sum_{m=1}^{n}\lambda_m {\boldsymbol \phi}_m.
+%  {\bf A}\tilde{\bf q}^{c} = \sum_{m=1}^{n}\lambda_m \phi_m.
+\end{equation}
+ここで,
+$\phi$は行列${\bf A}$の固有ベクトル,
+$\lambda_m$はそれに対する固有値を表す.
+固有値$\lambda_m$は固有ベクトルの成長率を意味する.
+従って,
+得られた固有値$\lambda$の実部$\Re$($\lambda$)から流れ場の安定性がわかり,
+虚部$\Im$($\lambda$)から振動周波数がわかる．
+本研究では,
+安定性に関心があるため固有値の実部に着目し,
+流れの安定性を以下のように分類する．
+\begin{equation}
+ {\rm \Re}(\lambda) \left\{ \begin{array}{ll}
+                      > 0 & {\rm 不安定}         \\ \nonumber
+                      = 0 & {\rm 中立安定}       \\ \nonumber
+                      < 0 & {\rm 安定}              \nonumber
+%                      > 0 & {\rm unstable}         \\ \nonumber
+%                      = 0 & {\rm neutrally stable} \\ \nonumber
+%                      < 0 & {\rm stable}              \nonumber
+              \end{array} \right.
+\end{equation}
+%以上より行列$\bf{A}$の固有値問題を解くことで流れ場の安定性解析を行うことができる．
+しかしながら,
+固有値問題として扱いたい係数行列の大きさは,
+総格子点数と保存量${\bf q}$の成分数に依存するため,
+%総格子点数と保存量${\bf q}_{c}$の成分数に依存するため,
+例えば,
+格子点数が$100\times100$の比較的小規模の流体計算であったとしても,
+総格子点数$N$は 10000 点となり,
+さらには,
+空間的に 2 次元の解析であっても,
+4 つの保存変数と総格子点数で作られる係数行列は$4N\times4N$であるため,
+16 億個の成分を持つ行列の固有値問題を扱う必要がある.
+したがって,
+格子点数が多い計算や,
+多次元計算では大規模な行列となり,
+直接固有値問題を扱うのは難しい.
+
+\subsection*{Arnoldi 法\cite{arnoldi}}
+
+固有値問題を扱う際,
+先に述べた問題があるため,
+本研究では大規模行列の固有値問題を陽に扱わない Arnoldi 法を用いる.
+Arnoldi 法では大規模行列に対して部分空間を用いることで,
+近似行列で表現し,
+反復的な方法により絶対値が比較的大きな固有値とそれに対応する固有ベクトルのみを求めることができるため,
+計算コストを削減することができる.
+以下では Arnoldi 法を用いて固有値と固有ベクトルを求める方法を述べる.
+まず,
+任意の擾乱ベクトル$\tilde{\bf q}_1$を与え,
+そのベクトルを正規化し,
+反復操作を行うことで近似行列の成分を集める.
+以下にアルゴリズムを示す.
+\begin{eqnarray}
+  &&\tilde{{\bf q}}_1 : {\rm arbitrary~initial~vector} \nonumber \\ 
+  &&{\boldsymbol \zeta}_1=(\tilde{{\bf q}}_1 \cdot \tilde{{\bf q}_1})^{-1/2} \tilde{{\bf q}}_1 \\
+  &&{\rm for}~k=1~{\rm to}~M_{A}  \nonumber \\ 
+  &&~~\tilde{{\bf q}}_{k+1} = {\bf A}{\mbox {\boldmath $\zeta$}}_k - \sum_{j=1}^k h_{j,k} {\mbox {\boldmath $\zeta$}}_j \\
+  &&~~h_{j,k} ={\mbox {\boldmath $\zeta$}}_j \cdot {\bf A}{\mbox {\boldmath $\zeta$}}_k \\
+  &&~~h_{k+1,k}=(\tilde{{\bf q}}_{k+1} \cdot \tilde{{\bf q}}_{k+1})^{1/2} \\
+  &&~~{\mbox {\boldmath $\zeta$}}_{k+1} =\tilde{{\bf q}}_{k+1}/h_{k+1,k} \\
+  &&{\rm next}~k \nonumber
+\end{eqnarray}
+ここで,
+$M_{A}$は反復回数であり,
+$h_{j,k}$は近似行列の成分を表す.
+$h_{j,k}$によって作られる近似行列は$M_{A}\times M_{A}$サイズの上 Hessenberg 行列となる.
+Hessenberg 行列を${\bf H}$と表記する.
+行列${\bf A}$の固有値$\lambda^{A}$は行列${\bf H}$の近似固有値として求まり,
+行列${\bf A}$の固有値$\lambda^{A}$に対応する固有ベクトル${\boldsymbol \phi}$は行列${\bf H}$の固有値$\lambda^{H}$,
+固有ベクトル${\boldsymbol \psi}$を用いて以下のように与えられる.
+\begin{eqnarray}
+  {\bf H}{\boldsymbol \psi}_j &=& \lambda_{j}^{H}{\boldsymbol \psi}_j ~~~~(j=1,2,\cdots,M), \\
+  {\boldsymbol \phi} &=& \sum_{k=1}^M ({\boldsymbol \psi}_j)_k {\boldsymbol \zeta}_k.
+\end{eqnarray}
+ここで,
+$({\boldsymbol \psi}_j)_k$は$j$番目の固有ベクトルの$k$番目の成分を表す．
+
+\subsection*{時間発展法}
+
+千葉が用いた手法は時間発展法\cite{theofilis2}と呼ばれており,
+基本流れ場に擾乱を加えその流れ場の時間積分をとることで,
+固有値の実部が正に対応するモードは成長し,
+負に対応するモードは減衰することを利用して不安定モードと安定モードを分離することができ,
+特徴的な流れ場を抽出する上では都合が良い.
+擾乱を与えたときの時刻を$t$,積分時間を$T$とすると,
+時刻$t$と時刻$t+T$における微小擾乱$\tilde{\bf q}$の関係は以下のように表せる.
+%時刻$t$と時刻$t+T$における微小擾乱$\tilde{\bf q}^{c}$の関係は以下のように表せる.
+\begin{equation}
+  \tilde{\bf q}(t+T) = {\rm exp}({\bf A}T)\tilde{\bf q}(t),
+%  \tilde{\bf q}^{c}(t+T) = {\rm exp}({\bf A}T)\tilde{\bf q}^{c}(t),
+\label{timeintg}%  \tilde{\bf q}(t+T) = {\rm exp}({\bf A}T)\tilde{{\bf q}}(t) = {\bf B}\tilde{{\bf q}}(t)
+\end{equation}
+また,
+\begin{equation}
+   {\bf B} \equiv {\rm exp}({\bf A} T),
+%   {\bf B}= {\rm exp}({\bf A} T).
+\label{intgB}
+\end{equation}
+とすると,
+行列${\bf A}$の固有値$\lambda^A$と行列${\bf B}$の固有値$\lambda^B$の関係は以下のように表せる.
+\begin{equation}
+   \lambda^B= {\rm exp}(\lambda^A T).
+   \label{tab:lamdab}
+\end{equation}
+Arnoldi 法を用いる際,
+${\bf A}{\boldsymbol \zeta}$は直接用いずに,
+以下の近似式を用いて計算する.
+\begin{equation}
+  {\bf B}{\mbox {\boldmath $\zeta$}}_{k} = \frac{{\bf q}(t+T)-\bar{\bf q}}{\epsilon}.
+%  {\bf B}{\mbox {\boldmath $\zeta$}}^{c}_{k} = \frac{{\bf q}^{c}(t+T)-\bar{\bf q}^{c}}{\epsilon^{c}}.
+\label{timeappr}
+\end{equation}
+ここで,
+初期擾乱を付加した流れ場を以下のように表す.
+
+\begin{equation}
+{\bf q}(t)={\bar {\bf q}}+\epsilon{\boldsymbol \zeta}_k,
+%{\bf q}^{c}(t)={\bar {\bf q}}^{c}+\epsilon{\boldsymbol \zeta}_k,
+\end{equation}
+従って,
+${\bf q(t+T)}$はこの式を時刻$T$だけ積分することで得られる.
+また,
+$\epsilon$は微小定数であり,
+以下のように定義し擾乱の大きさを調節する.
+\begin{equation}
+  \epsilon = \frac{\parallel \bar{\bf q} \parallel}{\parallel {\mbox {\boldmath $\zeta$}}_{k} \parallel N} \epsilon_{0},
+%  \epsilon^{c} = \frac{\parallel \bar{\bf q}^{c} \parallel}{\parallel {\mbox {\boldmath $\zeta$}}^{c}_{k} \parallel N} \epsilon_{0},
+\label{ep}
+\end{equation}
+ここで,
+$\epsilon_{0}$は調節パラメーター,
+$N$は総格子点数を表す.
+
+\subsection*{計算手順}
+
+次に本研究において行った実際の計算手順について述べる.
+本研究では保存量に対する擾乱の固有値と固有ベクトルと同様に,
+上記の手法を元に原始変数に対する擾乱の固有値と固有ベクトルを保存量より算出した.
+図\ref{tab:flowchart2}に計算の流れを示す.
+ここで,
+上付き添字$c$は保存量を並べたベクトルであり,
+$p$は原始変数を並べたベクトルである.
+本研究では原始変数ベクトルは以下のように与える.
+\begin{equation}
+  {\bf q}^{p}=(\rho_1, p_1, T_1, T_{v1}, u_1, v_1, a_1, \cdots
+         ,\rho_N, p_N, T_N, T_{vN}, u_N, v_N, a_N) 
+\end{equation}
+ここで,
+$\rho$は密度,
+$p$は圧力,
+$T$は並進・回転温度,
+$T_{v}$は振動・電子励起温度,
+$u$は$x$方向速度,
+$v$は$y$方向速度,
+$a$は音速を示し,
+$N$は走行し点数を表す.
+最初に,
+CFD より流れ場の定常または準定常解を求める.
+保存量の流れ場を用いて原始変数を求める.
+次に,
+保存量の初期擾乱ベクトルを与える.
+本研究では一様ランダム擾乱ベクトルを作成し,
+初期擾乱として与える.
+保存量に対し基本流れ場に擾乱を付加し,
+式(\ref{decomposition})で表す擾乱入りの流れ場を得る.
+擾乱入りの流れ場の原始変数に対する値を算出し,
+以下の様に原始変数に対する初期擾乱ベクトルを求める.
+\begin{equation}
+{\tilde {\bf q}}^{p}_{1}={\bf q}^{p}_{1}(t)-{\bar {\bf q}}^{p}_{1}.
+\end{equation}
+次に,
+擾乱入りの流れ場を時刻$T$だけ再計算する.
+得られた解より,
+式(\ref{timeintg})で表される時間発展した保存量ベクトルと原始変数ベクトルを求める.
+さらに,
+保存量ベクトルと原始変数ベクトルのそれぞれで,
+式(\ref{timeappr})で表される近似を行う.
+次に Arnoldi 法のアルゴリズムに従い,
+行列${\bf H}$の成分を保存量ベクトルと原始変数ベクトルのそれぞれで集め,
+保存量と原始変数に対する次の擾乱ベクトルをそれぞれ作成する.
+以降この操作を反復させ,
+保存量ベクトルと原始変数ベクトルのそれぞれに対する行列${\bf H}$を作成し,
+近似固有値と近似固有ベクトルを得るが,
+基本流れ場に対し付加する擾乱は保存量に対する擾乱だけを用いている.
+
+
+\begin{figure}[h]
+ \begin{centering}
+   \includegraphics[width=140mm]{Fig/flowchart.eps}
+   \caption{計算の流れ.}
+   \label{tab:flowchart2}   
+ \end{centering}
+\end{figure}

@@ -1,0 +1,69 @@
+空間精度はMUSCL法により2次精度を保持する\cite{van1979towards}．
+MUSCL法は1次精度風上差分法がTVD条件を満たすことに注目して，セル境界の左右の物理量(L-state，R-state)を，
+それを取り囲むいくつかの位置での物理量などから内挿によって決め，
+それを用いて数値流束を計算する．
+内挿の際に流束制限関数を導入することでTVD条件を満たすことができる．
+本計算では，特性変数を内挿することによって高次精度を達成する．
+
+保存変数を$\bm{Q}$，流束ヤコビアン行列を$A$とし，1次元オイラー方程式を凍結し，以下のように局所的に線形化する．
+\begin{equation}
+   \dfrac{\partial \bm{Q}}{\partial t}
+  +A \dfrac{\partial \bm{Q}}{\partial x}
+  =\bm{0}.
+  \label{eq:senkei}
+\end{equation}
+流束ヤコビアン行列は線形独立な右固有ベクトル$(R_1,R_2,R_3)$を持つ．
+ここで，右固有ベクトルを並べて構成した変換行列$T=(R_1,R_2,R_3)$と
+固有値が対角成分に並ぶ対角行列$\Lambda$を考える．
+$AT=T\Lambda$が成り立つので，右側から$T$の逆行列をかけると，
+\begin{equation}
+  A=T \Lambda T^{-1},
+\end{equation}
+が成り立つ．
+ここで，特性変数$\bm{W}$を$\bm{W}=T^{-1}\bm{Q}$で定義すると式(\ref{eq:senkei})は
+\begin{equation}
+   \dfrac{\partial \bm{W}}{\partial t}
+  +\Lambda \dfrac{\partial \bm{W}}{\partial x}
+  =\bm{0},
+\end{equation}
+となる．
+$\Lambda$が対角行列であることから，3個のスカラー方程式に分離されることになる．
+従って，特性変数の各成分毎にスカラー方程式に対するTVDスキームを適用することが出来る．
+TVD条件を満たすようにminmodリミッターを用いてセル境界における特性変数をそれぞれ内挿すると，
+\begin{equation}
+\begin{split}
+  {\bm W}_{i+1/2}^L = {\bm W}_i+\dfrac{1}{4} \{ (1- \mu)&{\rm minmod}(\Delta_{i-1/2},\omega \Delta_{i+1/2}) \\
+  + (1+ \mu)&{\rm minmod}(\omega \Delta_{i-1/2},\Delta_{i+1/2}) \},
+\end{split}
+\end{equation}
+\begin{equation}
+\begin{split}
+  {\bm W}_{i-1/2}^R={\bm W}_i-\dfrac{1}{4} \{ (1+ \mu)&{\rm minmod}(\Delta_{i-1/2},\omega \Delta_{i+1/2}) \\
+  + (1- \mu)&{\rm minmod}(\omega \Delta_{i-1/2},\Delta_{i+1/2}) \},
+\end{split}
+\end{equation}
+と書ける．
+ただし$\Delta$は特性変数の差分を表す．
+$\omega$は圧縮率であり，
+\begin{equation}
+  \omega=\dfrac{3-\mu}{1-\mu},
+\end{equation}
+を用いる．
+次に特性変数からもとの保存変数に逆変換することを考える．
+変換行列$T$を左からかけると，
+\begin{equation}
+\begin{split}
+  {\bm Q}_{i+1/2}^L={\bm Q}_i+\dfrac{T_{i+1/2}}{4} \{ (1- \mu)&{\rm minmod}(\Delta_{i-1/2},\omega \Delta_{i+1/2}) \\
+  + (1+ \mu)&{\rm minmod}(\omega \Delta_{i-1/2},\Delta_{i+1/2}) \},
+\end{split}
+\end{equation}
+\begin{equation}
+\begin{split}
+  {\bm Q}_{i-1/2}^R={\bm Q}_i-\dfrac{T_{i-1/2}}{4} \{ (1+ \mu)&{\rm minmod}(\Delta_{i-1/2},\omega \Delta_{i+1/2}) \\
+  + (1- \mu)&{\rm minmod}(\omega \Delta_{i-1/2},\Delta_{i+1/2}) \},
+\end{split}
+\end{equation}
+を得る．
+注意すべき点は，変換行列$T$が${\rm minmod}$制限関数の外側に残されている点である．
+言い換えると，変換行列$T$と${\rm minmod}$制限関数は可換ではない．
+ただし変換行列$T$の評価は，Roe平均\cite{roe1981approximate}を用いて行う．
